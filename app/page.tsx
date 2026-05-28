@@ -68,10 +68,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-game-pattern flex flex-col justify-between items-center p-4 md:p-6 select-none">
+    <div className="h-auto lg:min-h-screen bg-game-pattern flex flex-col justify-between items-center py-auto p-4 md:p-6 select-none">
       
       {/* Navbar */}
-      <nav className="w-full max-w-5xl flex justify-between items-center bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3 z-10">
+      <nav className="w-full max-w-5xl flex justify-between items-center bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3 z-10 animate-fade-in animate-delay-050">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 rounded-lg p-1.5 text-white shadow-sm">
             <Camera className="w-5 h-5" />
@@ -98,44 +98,39 @@ export default function HomePage() {
       </nav>
 
       {/* Main Hero Container */}
-      <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center text-center gap-5 md:gap-6 my-6 md:my-8 z-10">
+      <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center text-center md:gap-6 lg:mt-1  -my-6 z-10">
         
         {/* Logos & Branding */}
-        <div className="flex flex-col items-center max-w-md w-full">
-          <div className="flex items-center gap-4 bg-white border border-slate-200/80 shadow-sm px-4 py-2 rounded-full mb-4">
-            <div className="flex items-center gap-1">
-              <span className="text-blue-600 font-bold">✦</span>
-              <span className="text-xs font-extrabold text-green-600 tracking-wide">BAZMA</span>
-            </div>
-            <div className="w-[1px] h-3.5 bg-slate-300"></div>
-            <div className="flex items-center gap-1">
-              <div className="w-3.5 h-3.5 bg-blue-600 flex items-center justify-center rounded-[2px]">
-                <span className="text-[7px] font-bold text-white">B</span>
-              </div>
-              <span className="text-xs font-extrabold text-slate-700">SMK TI BAZMA</span>
-            </div>
-          </div>
+        <div className="flex flex-col items-center max-w-md w-full gap-0 animate-fade-in animate-delay-100">
+
+          {/* Logo Lepas Juang */}
+          <img 
+            src="/Graduation.svg" 
+            alt="Graduation Logo" 
+            className="w-full h-auto block  animate-float animate-fade-in animate-delay-200"
+            style={{ maxWidth: '100%', height: 'auto' }}
+          />
 
           {/* Central Logo Box */}
-          <div className="bg-white border border-slate-200 shadow-md rounded-3xl p-5 md:p-8 w-full flex flex-col items-center gap-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-blue-600 tracking-tight leading-tight">
-              LEPAS JUANG #2
-            </h1>
-            <div className="bg-amber-400 text-black font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm uppercase tracking-widest rotate-[-1deg]">
+          <div className="bg-white border border-slate-200 shadow-md rounded-3xl p-5 md:p-8 w-full flex flex-col items-center gap-2 -mt-6 md:-mt-8 animate-fade-in animate-pop animate-delay-300">
+               <div className="bg-amber-400 text-black font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm uppercase tracking-widest rotate-[-1deg]">
               2 June 2025
             </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-blue-600 tracking-tight leading-tight">
+              Take Your Time
+            </h1>
             
             <p className="text-slate-500 text-xs sm:text-sm font-semibold mt-2 leading-relaxed">
-              Selamat Datang di Photobooth resmi Lepas Juang #2 SMK TI Bazma. Abadikan momen kelulusan Anda secara online & offline!
+              Selamat Datang di Photobooth Lepas Juang #2 SMK TI Bazma. Abadikan momen kelulusan secara online & offline!
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="w-full max-w-sm flex flex-col gap-3 mt-3 md:mt-4 px-4">
+        <div className="w-full max-w-sm flex flex-col gap-3 mt-1 md:mt-2 px-4 animate-fade-in animate-delay-400">
           <button
             onClick={handleStart}
-            className="w-full py-3 sm:py-4 px-4 flex justify-center items-center gap-2 text-white font-bold text-base sm:text-lg btn-google-blue cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all"
+            className="w-full py-3 sm:py-4 px-4 flex justify-center items-center gap-2 text-white font-bold text-base sm:text-lg btn-google-blue cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all duration-200 animate-fade-in animate-delay-400"
           >
             START PHOTO BOOTH
             <ArrowRight className="w-5 h-5 flex-shrink-0" />
@@ -160,7 +155,7 @@ export default function HomePage() {
         </div>
 
         {/* Mini links */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 text-xs font-bold text-slate-400 mt-2">
+        <div className="flex flex-wrap justify-center gap-3 md:gap-4 text-xs font-bold text-slate-400 mb-8 animate-fade-in animate-delay-450">
           <button onClick={() => setShowInfoModal('PRIVACY')} className="hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
             Kebijakan Privasi
           </button>

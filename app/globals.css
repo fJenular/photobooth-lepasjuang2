@@ -217,6 +217,51 @@ body {
   animation: fade-in-scale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+@keyframes float-vertical {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float-vertical 4s ease-in-out infinite;
+}
+
+@keyframes pop-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-pop {
+  animation: pop-scale 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-delay-050 {
+  animation-delay: 0.05s;
+}
+.animate-delay-100 {
+  animation-delay: 0.1s;
+}
+.animate-delay-200 {
+  animation-delay: 0.2s;
+}
+.animate-delay-300 {
+  animation-delay: 0.3s;
+}
+.animate-delay-400 {
+  animation-delay: 0.4s;
+}
+.animate-delay-450 {
+  animation-delay: 0.45s;
+}
+
 /* Photo filters */
 .filter-vintage {
   filter: sepia(0.3) contrast(1.1) brightness(1.05) saturate(1.1);

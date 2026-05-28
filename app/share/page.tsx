@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useBooth } from '@/lib/boothContext';
 import { saveLocalCapture } from '@/lib/localDb';
 import { getSupabaseConfig, uploadCaptureToSupabase, insertCaptureRecord } from '@/lib/supabase';
-import { ArrowLeft, Download, Printer, QrCode, RefreshCw, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Download, Home, Printer, QrCode, RefreshCw, RotateCcw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function SharePage() {
@@ -582,14 +582,24 @@ const [uploadError, setUploadError] = useState<string | null>(null);
             )}
           </div>
 
-          {/* Reset button */}
-          <div className="border-t border-slate-100 pt-3">
+          {/* Reset and Home buttons */}
+          <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">
             <button
               onClick={handleRestart}
-              className="w-full py-3 flex justify-center items-center gap-2 text-white font-bold text-xs btn-google-red cursor-pointer"
+              className="w-full py-3 flex justify-center items-center gap-2 text-white font-bold text-xs btn-google-red cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               AMBIL FOTO BARU
+            </button>
+            <button
+              onClick={() => {
+                resetBooth();
+                router.push('/');
+              }}
+              className="w-full py-3 flex justify-center items-center gap-2 text-blue-600 font-bold text-xs border border-blue-600 btn-google-white cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all"
+            >
+              <Home className="w-3.5 h-3.5" />
+              KEMBALI KE BERANDA
             </button>
           </div>
 
