@@ -25,6 +25,7 @@ export default function SharePage() {
   const { capturedPhotos, resetBooth } = useBooth();
 
   const [finalImage, setFinalImage] = useState<string | null>(null);
+  const [finalImagePng, setFinalImagePng] = useState<string | null>(null);
   const [shareId, setShareId] = useState('');
   const [localIp] = useState(() => {
     if (typeof window === 'undefined') return 'localhost';
@@ -133,16 +134,18 @@ export default function SharePage() {
 
       ctx.drawImage(frameImage, 0, 0, width, height);
 
-      const compiledUrl = canvas.toDataURL('image/png');
+      const compiledUrlPng = canvas.toDataURL('image/png');
+      const compiledUrlJpeg = canvas.toDataURL('image/jpeg', 0.85);
       const uniqueId = crypto.randomUUID();
 
-      setFinalImage(compiledUrl);
+      setFinalImage(compiledUrlJpeg);
+      setFinalImagePng(compiledUrlPng);
       setShareId(uniqueId);
 
       await saveLocalCapture({
         id: uniqueId,
         created_at: new Date().toISOString(),
-        image_url: compiledUrl,
+        image_url: compiledUrlJpeg,
         layout_type: 'frame',
         frame_id: FRAME_ID,
         is_local: true,
@@ -150,7 +153,7 @@ export default function SharePage() {
 
       const config = getSupabaseConfig();
       if (config.url && config.anonKey) {
-        uploadToCloud(uniqueId, compiledUrl);
+        uploadToCloud(uniqueId, compiledUrlJpeg);
       }
     } catch {
       setUploadError('Gagal membuat gambar final dari frame.png.');
@@ -180,7 +183,7 @@ export default function SharePage() {
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow || !finalImage) return;
+    if (!printWindow || !finalImagePng) return;
 
     printWindow.document.write(`
       <html>
@@ -193,7 +196,7 @@ export default function SharePage() {
           </style>
         </head>
         <body>
-          <img src="${finalImage}" onload="window.print(); window.close();" />
+          <img src="${finalImagePng}" onload="window.print(); window.close();" />
         </body>
       </html>
     `);
@@ -203,12 +206,18 @@ export default function SharePage() {
   const handleDownload = async () => {
     if (!finalImage) return;
 
-    // Mobile Web Share API support (Highly recommended for tablets and mobile devices)
-    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    const isJpeg = finalImage.startsWith('data:image/jpeg');
+    const extension = isJpeg ? 'jpg' : 'png';
+    const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+
+    const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // Mobile Web Share API support ONLY on Mobile/Tablet devices
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
       try {
         const response = await fetch(finalImage);
         const blob = await response.blob();
-        const file = new File([blob], `lepas-juang-${shareId.substring(0, 8)}.png`, { type: 'image/png' });
+        const file = new File([blob], `lepas-juang-${shareId.substring(0, 8)}.${extension}`, { type: mimeType });
         
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -225,7 +234,7 @@ export default function SharePage() {
 
     const link = document.createElement('a');
     link.href = finalImage;
-    link.download = `lepas-juang-${shareId.substring(0, 8)}.png`;
+    link.download = `lepas-juang-${shareId.substring(0, 8)}.${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -310,7 +319,7 @@ export default function SharePage() {
               <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-green-600">Final Output</p>
               <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 md:text-2xl">Siap cetak & bagikan</h2>
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                Download PNG, cetak, atau pindai QR untuk ambil hasil dari HP.
+                Download JPG, cetak, atau pindai QR untuk ambil hasil dari HP.
               </p>
             </div>
             <div className="flex flex-col gap-2.5">
@@ -320,12 +329,12 @@ export default function SharePage() {
               className="w-full py-4 flex justify-center items-center gap-2 text-white font-bold text-md btn-google-green cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="w-5 h-5" />
-              DOWNLOAD GAMBAR (PNG)
+              DOWNLOAD GAMBAR (JPG)
             </button>
 
             <button
               onClick={handlePrint}
-              disabled={!finalImage}
+              disabled={!finalImagePng}
               className="w-full py-3.5 flex justify-center items-center gap-2 text-white font-bold text-sm btn-google-blue cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />

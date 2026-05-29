@@ -257,7 +257,7 @@ export default function CapturePage() {
     setIsCounting(true);
     isCountingRef.current = true;
 
-    let count = 3;
+    let count = 1;
     setCountdown(count);
     playSound('beep');
 
@@ -299,7 +299,7 @@ export default function CapturePage() {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-      const newPhoto = canvas.toDataURL('image/png');
+      const newPhoto = canvas.toDataURL('image/jpeg', 0.85);
       
       const currentPhotos = [...photosRef.current];
       const currentIndex = activeIndexRef.current;

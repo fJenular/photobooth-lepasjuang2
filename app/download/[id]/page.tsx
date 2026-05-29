@@ -53,20 +53,33 @@ export default function DownloadPage() {
 
         // 3. If nothing works, check if we can fetch by public storage URL directly (in case row was missed but image exists)
         if (client) {
-          const fileName = `${id}.png`;
-          const { data: urlData } = client.storage
+          let fileName = `${id}.jpg`;
+          let { data: urlData } = client.storage
             .from('photos')
             .getPublicUrl(fileName);
           
-          if (urlData?.publicUrl) {
-            // Verify if image actually exists
-            const res = await fetch(urlData.publicUrl, { method: 'HEAD' });
-            if (res.ok) {
-              setPhotoUrl(urlData.publicUrl);
-              setOrigin('Supabase File Storage');
-              setLoading(false);
-              return;
+          let res = await fetch(urlData.publicUrl, { method: 'HEAD' });
+          if (!res.ok) {
+            // Fallback to check if it was stored as PNG
+            fileName = `${id}.png`;
+            const fallbackUrlData = client.storage
+              .from('photos')
+              .getPublicUrl(fileName);
+            
+            if (fallbackUrlData?.data?.publicUrl) {
+              const fallbackRes = await fetch(fallbackUrlData.data.publicUrl, { method: 'HEAD' });
+              if (fallbackRes.ok) {
+                res = fallbackRes;
+                urlData = fallbackUrlData.data;
+              }
             }
+          }
+          
+          if (res.ok && urlData?.publicUrl) {
+            setPhotoUrl(urlData.publicUrl);
+            setOrigin('Supabase File Storage');
+            setLoading(false);
+            return;
           }
         }
 
@@ -84,12 +97,18 @@ export default function DownloadPage() {
   const handleDownload = async () => {
     if (!photoUrl) return;
 
-    // 1. Try Mobile Web Share API first (Highly recommended for iOS Safari, Chrome Android, and in-app browsers)
-    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+    const isJpeg = photoUrl.toLowerCase().includes('.jpg') || photoUrl.toLowerCase().includes('.jpeg') || photoUrl.startsWith('data:image/jpeg');
+    const extension = isJpeg ? 'jpg' : 'png';
+    const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+
+    const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // 1. Try Mobile Web Share API first (Highly recommended for iOS Safari, Chrome Android, and in-app browsers on mobile/tablet)
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
       try {
         const response = await fetch(photoUrl);
         const blob = await response.blob();
-        const file = new File([blob], `take-your-time-${id.substring(0, 8)}.png`, { type: 'image/png' });
+        const file = new File([blob], `take-your-time-${id.substring(0, 8)}.${extension}`, { type: mimeType });
         
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -107,10 +126,10 @@ export default function DownloadPage() {
     // 2. If it is a Supabase URL, use server-side ?download parameter to bypass CORS & in-app browser limitations
     if (photoUrl.includes('supabase.co/storage/v1/object/public')) {
       try {
-        const downloadUrl = `${photoUrl}?download=take-your-time-${id.substring(0, 8)}.png`;
+        const downloadUrl = `${photoUrl}?download=take-your-time-${id.substring(0, 8)}.${extension}`;
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.download = `take-your-time-${id.substring(0, 8)}.png`;
+        link.download = `take-your-time-${id.substring(0, 8)}.${extension}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -125,7 +144,7 @@ export default function DownloadPage() {
       try {
         const link = document.createElement('a');
         link.href = photoUrl;
-        link.download = `take-your-time-${id.substring(0, 8)}.png`;
+        link.download = `take-your-time-${id.substring(0, 8)}.${extension}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -143,7 +162,7 @@ export default function DownloadPage() {
       
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `take-your-time-${id.substring(0, 8)}.png`;
+      link.download = `take-your-time-${id.substring(0, 8)}.${extension}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -164,61 +183,68 @@ export default function DownloadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-game-pattern flex flex-col justify-between items-center p-6 select-none">
+    <div className="min-h-screen bg-game-pattern flex flex-col justify-between items-center p-4 md:p-6 select-none">
       
-      {/* Game Header */}
-      <header className="text-center mt-4">
-        <h1 className="text-4xl md:text-5xl font-black text-white text-outline-md tracking-wider uppercase mb-1">
-          Take Your Time
-        </h1>
-        <p className="text-yellow-400 font-bold text-outline-sm tracking-wide text-sm bg-black/40 px-4 py-1.5 rounded-full border border-yellow-400/20 inline-block">
-          ✨ RETRO PHOTOBOOTH PORTAL ✨
-        </p>
-      </header>
+      {/* Navbar/Header */}
+      <nav className="w-full max-w-md flex justify-between items-center bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3 z-10 animate-fade-in">
+        <div className="flex items-center gap-3 mx-auto">
+          <div className="bg-blue-600 rounded-lg p-1.5 text-white shadow-sm">
+            <Camera className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-lg font-extrabold text-blue-600 tracking-tight leading-none">
+              LEPAS JUANG #2
+            </span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+              SMK TI BAZMA • PORTAL UNDUH
+            </span>
+          </div>
+        </div>
+      </nav>
 
       {/* Main card */}
-      <main className="w-full max-w-md my-auto flex flex-col items-center">
+      <main className="w-full max-w-md my-auto flex flex-col items-center py-6 animate-fade-in animate-delay-100">
         
         {loading ? (
-          <div className="bg-slate-900 border-cartoony shadow-cartoony rounded-3xl p-8 w-full text-center flex flex-col items-center gap-4">
+          <div className="bg-white border border-slate-200/80 shadow-md rounded-[2rem] p-8 w-full text-center flex flex-col items-center gap-4">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border-4 border-yellow-400 border-t-transparent animate-spin"></div>
-              <Camera className="w-6 h-6 text-yellow-400 animate-pulse" />
+              <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+              <Camera className="w-6 h-6 text-blue-600 animate-pulse" />
             </div>
-            <p className="text-yellow-400 font-bold text-xl tracking-wide animate-pulse">
+            <p className="text-blue-600 font-extrabold text-lg tracking-wide animate-pulse">
               MEMUAT FOTO ANDA...
             </p>
-            <p className="text-slate-400 text-xs">Mencari di penyimpanan awan dan database lokal</p>
+            <p className="text-slate-400 text-xs font-semibold">Mencari di penyimpanan cloud dan cache lokal</p>
           </div>
         ) : errorMsg ? (
-          <div className="bg-rose-950 border-cartoony shadow-cartoony rounded-3xl p-8 w-full text-center flex flex-col items-center gap-4">
-            <div className="bg-rose-500/20 p-4 rounded-full border-2 border-rose-500">
-              <AlertCircle className="w-10 h-10 text-rose-400" />
+          <div className="bg-white border border-slate-200/80 shadow-md rounded-[2rem] p-8 w-full text-center flex flex-col items-center gap-4">
+            <div className="bg-rose-500/10 p-4 rounded-full border border-rose-200">
+              <AlertCircle className="w-10 h-10 text-rose-500" />
             </div>
-            <h2 className="text-rose-400 font-bold text-2xl tracking-wide">FOTO TIDAK DITEMUKAN</h2>
-            <p className="text-slate-200 text-sm leading-relaxed">
+            <h2 className="text-rose-500 font-extrabold text-xl tracking-tight">FOTO TIDAK DITEMUKAN</h2>
+            <p className="text-slate-500 text-xs leading-relaxed font-semibold">
               Foto dengan ID ini tidak dapat ditemukan. Jika menggunakan mode offline, pastikan Anda memindai menggunakan perangkat yang sama atau berada dalam jaringan Wi-Fi lokal photobooth yang sama.
             </p>
-            <div className="w-full pt-4 border-t border-rose-500/20">
+            <div className="w-full pt-4 border-t border-slate-100">
               <Link
                 href="/"
-                className="w-full py-3.5 flex justify-center items-center gap-2 text-white font-bold btn-cartoony-red text-outline-sm"
+                className="w-full py-3 flex justify-center items-center gap-2 text-white font-bold text-sm btn-google-red cursor-pointer"
               >
                 KEMBALI KE BERANDA
               </Link>
             </div>
           </div>
         ) : (
-          <div className="w-full flex flex-col gap-6">
+          <div className="w-full flex flex-col gap-5">
             
             {/* Visual Frame wrapper */}
-            <div className="bg-black border-cartoony shadow-cartoony rounded-2xl p-4 overflow-hidden relative group">
-              <div className="absolute top-2 right-2 bg-green-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full border border-black z-10">
+            <div className="bg-white border border-slate-200/80 shadow-md rounded-[2rem] p-4 overflow-hidden relative flex flex-col gap-3">
+              <div className="absolute top-6 right-6 bg-green-500 text-white font-extrabold text-[9px] px-2.5 py-0.5 rounded-full border border-white shadow-sm z-10 tracking-widest uppercase">
                 READY
               </div>
 
               {/* Image Preview Container */}
-              <div className="relative bg-slate-900 border-2 border-black rounded-lg overflow-hidden flex items-center justify-center aspect-[2/3] max-h-[480px]">
+              <div className="relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center aspect-[2/3] max-h-[480px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoUrl || ''}
@@ -228,8 +254,8 @@ export default function DownloadPage() {
               </div>
 
               {/* Source Badge */}
-              <div className="mt-3 text-center">
-                <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-3 py-1 rounded-full uppercase tracking-wider font-semibold">
+              <div className="text-center">
+                <span className="text-[9px] bg-slate-50 text-slate-500 border border-slate-200 px-3 py-1 rounded-full uppercase tracking-widest font-extrabold">
                   Sumber: {origin}
                 </span>
               </div>
@@ -239,30 +265,30 @@ export default function DownloadPage() {
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleDownload}
-                className="w-full py-4 flex justify-center items-center gap-2 text-white font-black text-xl btn-cartoony-green text-outline-sm cursor-pointer"
+                className="w-full py-4 flex justify-center items-center gap-2 text-white font-bold text-md btn-google-green cursor-pointer shadow-md hover:shadow-lg active:scale-95 transition-all"
               >
-                <Download className="w-6 h-6 stroke-[3]" />
-                SIMPAN FOTO (PNG)
+                <Download className="w-5 h-5 stroke-[2.5]" />
+                DOWNLOAD FOTO (JPG)
               </button>
 
-              <p className="text-[11px] text-slate-400 text-center font-medium px-2 leading-relaxed">
+              <p className="text-[10px] text-slate-400 text-center font-semibold px-2 leading-relaxed">
                 💡 <strong>Tips HP:</strong> Jika tombol tidak merespon (terutama di dalam browser Instagram/WhatsApp), silakan <strong>tekan lama gambar di atas</strong> lalu pilih <strong>"Simpan Gambar"</strong>.
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 mt-1">
                 <button
                   onClick={copyLink}
-                  className="py-3.5 flex justify-center items-center gap-2 text-white font-bold text-sm btn-cartoony-blue text-outline-sm cursor-pointer"
+                  className="py-3 flex justify-center items-center gap-2 text-white font-bold text-xs btn-google-blue cursor-pointer"
                 >
                   {copied ? <Check className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
-                  {copied ? 'Tautan Disalin!' : 'Bagikan Link'}
+                  {copied ? 'Link Disalin!' : 'Bagikan Link'}
                 </button>
 
                 <Link
                   href="/"
-                  className="py-3.5 flex justify-center items-center gap-2 text-white font-bold text-sm btn-cartoony-slate text-outline-sm text-center"
+                  className="py-3 flex justify-center items-center gap-2 text-slate-700 font-bold text-xs btn-google-white text-center cursor-pointer"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-4 h-4 text-blue-600" />
                   Mulai Baru
                 </Link>
               </div>
@@ -273,7 +299,7 @@ export default function DownloadPage() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center mt-8 text-slate-500 text-xs font-semibold">
+      <footer className="text-center text-slate-400 text-xs font-semibold z-10">
         <p>© 2026 TAKE YOUR TIME BOOTH. ALL RIGHTS RESERVED.</p>
       </footer>
 

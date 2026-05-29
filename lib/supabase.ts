@@ -121,6 +121,10 @@ export async function uploadCaptureToSupabase(id: string, base64Image: string): 
 
   try {
     // Convert base64 data to blob
+    const mimeMatch = base64Image.match(/^data:([^;]+);base64,/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1] || 'png';
+
     const base64Data = base64Image.split(',')[1];
     const byteCharacters = atob(base64Data);
     const byteNumbers = new Array(byteCharacters.length);
@@ -128,15 +132,15 @@ export async function uploadCaptureToSupabase(id: string, base64Image: string): 
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/png' });
+    const blob = new Blob([byteArray], { type: mimeType });
 
-    const fileName = `${id}.png`;
+    const fileName = `${id}.${extension}`;
 
     // Upload to 'photos' bucket
     const { data, error } = await client.storage
       .from('photos')
       .upload(fileName, blob, {
-        contentType: 'image/png',
+        contentType: mimeType,
         cacheControl: '3600',
         upsert: true,
       });
