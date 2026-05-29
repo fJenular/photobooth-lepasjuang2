@@ -257,7 +257,7 @@ export default function CapturePage() {
     setIsCounting(true);
     isCountingRef.current = true;
 
-    let count = 1;
+    let count = 3;
     setCountdown(count);
     playSound('beep');
 
