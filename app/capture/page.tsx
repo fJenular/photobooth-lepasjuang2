@@ -3,21 +3,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBooth } from '@/lib/boothContext';
-import { ArrowLeft, Camera, RotateCcw, Video } from 'lucide-react';
+import { ArrowLeft, Camera, Video } from 'lucide-react';
 
 export default function CapturePage() {
   const router = useRouter();
-  const { selectedFrame, capturedPhotos, setCapturedPhotos } = useBooth();
+  const { capturedPhotos, setCapturedPhotos } = useBooth();
 
   // Camera & Capture states
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [countdown, setCountdown] = useState<number>(0);
   const [isCounting, setIsCounting] = useState<boolean>(false);
   const [isFlash, setIsFlash] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [mirrorEnabled, setMirrorEnabled] = useState<boolean>(true);
+  const [flashEnabled, setFlashEnabled] = useState<boolean>(true);
+  const [liveMode, setLiveMode] = useState<boolean>(true);
+  const [mounted, setMounted] = useState<boolean>(false);
 
   // Refs to prevent state closure capture bugs during async timeouts
   const photosRef = useRef<string[]>([]);
@@ -29,8 +34,8 @@ export default function CapturePage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   // Required snaps count
-  const requiredSnaps = selectedFrame.layoutType === 'photostrip' ? 4 : 
-                         selectedFrame.layoutType === 'grid' ? 6 : 1;
+  const requiredSnaps = 6;
+  const capturedCount = capturedPhotos.filter(Boolean).length;
 
   useEffect(() => {
     // Populate cameras list
@@ -41,6 +46,9 @@ export default function CapturePage() {
     photosRef.current = [];
     activeIndexRef.current = 0;
     setActivePhotoIndex(0);
+
+    // Mark mounted after first render to avoid SSR/client hydration mismatches
+    setMounted(true);
 
     return () => {
       stopCamera();
@@ -62,12 +70,12 @@ export default function CapturePage() {
     }
   };
 
-  const startCamera = async (camId: string) => {
+  const startCamera = async (camId: string = '', facing: 'user' | 'environment' = cameraFacing) => {
     stopCamera();
     try {
       setCameraActive(true);
       const constraints = {
-        video: camId ? { deviceId: { exact: camId } } : { facingMode: 'user' },
+        video: camId ? { deviceId: { exact: camId } } : { facingMode: facing },
         audio: false
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -88,6 +96,13 @@ export default function CapturePage() {
       streamRef.current = null;
     }
     setCameraActive(false);
+  };
+
+  const handleFlipCamera = () => {
+    const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
+    setCameraFacing(nextFacing);
+    setSelectedCameraId('');
+    startCamera('', nextFacing);
   };
 
   // Sound Synthesizer
@@ -234,7 +249,7 @@ export default function CapturePage() {
         setTimeout(() => {
           playSound('cheer');
           stopCamera();
-          router.push('/editor');
+          router.push('/result');
         }, 800);
       }
     }
@@ -242,7 +257,7 @@ export default function CapturePage() {
 
   const handleBack = () => {
     stopCamera();
-    router.push('/select-frame');
+    router.push('/');
   };
 
   return (
@@ -261,120 +276,175 @@ export default function CapturePage() {
             AMBIL FOTO SNAPSHOT
           </h2>
           <span className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block">
-            Langkah 2 dari 4 • Foto {activePhotoIndex + 1} dari {requiredSnaps}
+            Foto {activePhotoIndex + 1} dari {requiredSnaps}
           </span>
         </div>
 
-        {/* Camera Selector */}
-        <div className="relative">
-          <select
-            value={selectedCameraId}
-            onChange={(e) => {
-              setSelectedCameraId(e.target.value);
-              startCamera(e.target.value);
-            }}
-            className="bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl pl-3.5 pr-8 py-2 appearance-none cursor-pointer focus:outline-none focus:bg-white"
-          >
-            {cameras.map(cam => (
-              <option key={cam.deviceId} value={cam.deviceId}>
-                {cam.label || `Camera ${cameras.indexOf(cam) + 1}`}
-              </option>
-            ))}
-          </select>
-          <Video className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
-        </div>
+        <div className="w-9"></div>
       </header>
 
       {/* Main Panel */}
-      <main className="w-full max-w-5xl flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 my-4 z-10 items-center">
-        
-        {/* Webcam View */}
-        <div className="lg:col-span-8 relative bg-slate-950 border border-slate-200 shadow-md rounded-3xl aspect-[4/3] overflow-hidden flex items-center justify-center order-2 lg:order-1">
-          <video 
-            ref={videoRef}
-            autoPlay 
-            playsInline 
-            className={`w-full h-full object-cover scale-x-[-1] ${
-              cameraActive ? 'block' : 'hidden'
-            }`}
-          ></video>
-
-          {!cameraActive && (
-            <div className="text-center flex flex-col items-center gap-3">
-              <Video className="w-8 h-8 text-slate-400 animate-pulse" />
-              <p className="text-slate-500 font-bold text-xs">Menghubungkan ke Stream Kamera...</p>
+      <main className="w-full max-w-5xl flex-1 grid grid-cols-1 lg:grid-cols-[2.4fr_1fr] gap-4 md:gap-6 my-4 z-10">
+        <section className="order-2 lg:order-1 flex flex-col gap-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">Progress</p>
+                <p className="text-sm font-bold text-slate-700">Foto {activePhotoIndex + 1} dari {requiredSnaps}</p>
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">
+                {Math.round((capturedCount / requiredSnaps) * 100)}%
+              </span>
             </div>
-          )}
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
+                style={{ width: `${Math.round((capturedCount / requiredSnaps) * 100)}%` }}
+              />
+            </div>
+          </div>
 
-          {isFlash && (
-            <div className="absolute inset-0 bg-white z-40 animate-flash"></div>
-          )}
+          <div className="relative bg-slate-950 border border-slate-200 shadow-md rounded-3xl aspect-[4/3] overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_30%)]" />
+              <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.04),rgba(255,255,255,0.04)_1px,transparent_1px,transparent_3px)] opacity-30" />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_30%,rgba(0,0,0,0.2))]" />
+            </div>
 
-          {isCounting && (
-            <div className="absolute inset-0 bg-black/60 z-30 flex items-center justify-center">
-              <div className="text-9xl font-black text-yellow-400 select-none animate-bounce">
-                {countdown}
+            <video 
+              ref={videoRef}
+              autoPlay 
+              playsInline 
+              className={
+                mounted
+                  ? `w-full h-full object-cover ${mirrorEnabled ? 'scale-x-[-1]' : 'scale-x-[1]'} ${cameraActive ? 'block' : 'hidden'}`
+                  : 'w-full h-full object-cover hidden'
+              }
+            ></video>
+
+            {!cameraActive && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-4">
+                <Video className="w-10 h-10 text-slate-400 animate-pulse" />
+                <p className="text-slate-300 font-bold text-xs">Menghubungkan ke Stream Kamera...</p>
+              </div>
+            )}
+
+            {flashEnabled && isFlash && (
+              <div className="absolute inset-0 bg-white z-40 animate-flash"></div>
+            )}
+
+            {isCounting && (
+              <div className="absolute inset-0 bg-black/75 z-30 flex items-center justify-center">
+                <div className="text-7xl md:text-[6rem] font-black text-yellow-400 select-none animate-bounce">
+                  {countdown}
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-x-0 top-4 px-4 flex flex-wrap items-center justify-between gap-2 z-20">
+              <div className="bg-red-600 text-white rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                REC
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMirrorEnabled(prev => !prev)}
+                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${mirrorEnabled ? 'bg-cyan-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
+                  Mirror
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFlipCamera}
+                  className="rounded-full px-3 py-2 bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-[0.2em] transition">
+                  Flip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlashEnabled(prev => !prev)}
+                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${flashEnabled ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
+                  Flash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLiveMode(prev => !prev)}
+                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${liveMode ? 'bg-slate-100 text-slate-700' : 'bg-slate-800 text-white'}`}>
+                  Live
+                </button>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Action Controls Panel */}
-        <div className="lg:col-span-4 flex flex-col gap-4 md:gap-5 justify-between self-stretch bg-white border border-slate-200 shadow-sm rounded-3xl p-4 md:p-5 order-1 lg:order-2">
-          
-          {/* Captured list */}
-          <div className="flex-1">
-            <p className="text-[10px] text-slate-450 font-bold uppercase text-center mb-3 tracking-wider">
-              Snap Photo Queue
-            </p>
-            
-            <div className={`grid gap-2 pr-1 custom-scrollbar overflow-y-auto max-h-[220px] ${
-              requiredSnaps === 4 ? 'grid-cols-4' : 
-              requiredSnaps === 6 ? 'grid-cols-3' : 'grid-cols-1'
-            }`}>
-              {Array.from({ length: requiredSnaps }).map((_, idx) => (
-                <div 
-                  key={idx}
-                  className={`aspect-square bg-slate-100 border rounded-xl overflow-hidden relative flex items-center justify-center ${
-                    activePhotoIndex === idx 
-                      ? 'border-blue-500 ring-2 ring-blue-500/15' 
-                      : 'border-slate-200'
-                  }`}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="relative w-24 h-24 rounded-full border border-white/20">
+                <div className="absolute inset-x-0 top-1/2 h-px bg-white/20" />
+                <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
+              </div>
+            </div>
+
+            <div className="absolute bottom-4 left-4 bg-black/40 text-emerald-300 text-[10px] uppercase tracking-[0.3em] font-bold px-3 py-1 rounded-full backdrop-blur-sm">
+              ISO 800
+            </div>
+            <div className="absolute bottom-4 right-4 bg-black/40 text-slate-100 text-[10px] uppercase tracking-[0.3em] font-bold px-3 py-1 rounded-full backdrop-blur-sm">
+              [ FACE ]
+            </div>
+
+            {cameras.length > 0 && (
+              <div className="absolute top-20 left-4 bg-slate-900/90 text-slate-100 rounded-full px-3 py-1 text-[10px] font-bold border border-white/10">
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => {
+                    setSelectedCameraId(e.target.value);
+                    startCamera(e.target.value);
+                  }}
+                  className="bg-transparent text-[10px] font-bold outline-none appearance-none"
                 >
+                  {cameras.map((cam, idx) => (
+                    <option key={cam.deviceId} value={cam.deviceId} className="bg-slate-900 text-white">
+                      {cam.label || `Camera ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <aside className="order-1 lg:order-2 flex flex-col gap-4 bg-white border border-slate-200 shadow-sm rounded-3xl p-4 md:p-5">
+          <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">Frame Preview</div>
+          <div className="border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+            <img
+              src="/frame.png"
+              alt="Frame Preview"
+              className="w-full h-auto object-cover"
+            />
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400 mb-3">Snap Photo Queue</p>
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: requiredSnaps }).map((_, idx) => (
+                <div key={idx} className="aspect-square rounded-2xl border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
                   {capturedPhotos[idx] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={capturedPhotos[idx]} 
-                      alt={`Snap ${idx + 1}`}
-                      className="w-full h-full object-cover scale-x-[-1]"
-                    />
+                    <img src={capturedPhotos[idx]} alt={`Snap ${idx + 1}`} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xs font-bold text-slate-400">{idx + 1}</span>
-                  )}
-                  
-                  {activePhotoIndex === idx && !isCounting && (
-                    <div className="absolute inset-0 bg-blue-500/5 animate-pulse"></div>
+                    <span className="text-[10px] font-bold text-slate-400">{idx + 1}</span>
                   )}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Capture Trigger */}
-          <div className="flex flex-col gap-2.5">
+          <div className="grid gap-3">
             <button
               onClick={handleCaptureSequence}
               disabled={isCounting || !cameraActive}
-              className={`w-full py-4 flex justify-center items-center gap-2 text-white font-bold text-md cursor-pointer ${
-                isCounting || !cameraActive 
-                  ? 'bg-slate-300 text-slate-100 shadow-none cursor-not-allowed' 
-                  : 'btn-google-blue'
-              }`}
-            >
+              className={`w-full py-4 flex justify-center items-center gap-2 text-white font-bold text-sm rounded-full transition ${
+                isCounting || !cameraActive
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}>
               <Camera className="w-5 h-5" />
-              {isCounting ? 'MENGAMBIL FOTO...' : 'MULAI AMBIL FOTO'}
+              {isCounting ? 'MENGAMBIL FOTO...' : 'AMBIL FOTO'}
             </button>
-
             <button
               onClick={() => {
                 setCapturedPhotos([]);
@@ -384,15 +454,12 @@ export default function CapturePage() {
                 setIsCounting(false);
                 isCountingRef.current = false;
               }}
-              className="w-full py-2.5 flex justify-center items-center gap-1.5 text-slate-600 font-bold text-xs btn-google-white cursor-pointer"
+              className="w-full py-3 rounded-full bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Ulang Dari Awal
+              Mulai Ulang
             </button>
           </div>
-
-        </div>
-
+        </aside>
       </main>
 
       {/* Hidden canvas helper */}

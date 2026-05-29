@@ -452,7 +452,7 @@ const [uploadError, setUploadError] = useState<string | null>(null);
       {/* Header */}
       <header className="w-full max-w-5xl flex items-center justify-between bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3.5 mb-2 z-10">
         <button 
-          onClick={() => router.push('/editor')}
+          onClick={() => router.push('/result')}
           className="p-2 hover:bg-slate-100 border border-slate-200 rounded-xl cursor-pointer text-slate-600 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

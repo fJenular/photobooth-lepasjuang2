@@ -36,7 +36,11 @@ export function BoothProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFrame = sessionStorage.getItem('booth_frame');
-      const savedPhotos = sessionStorage.getItem('booth_photos');
+      // NOTE: we intentionally do NOT load `booth_photos` from sessionStorage here.
+      // Storing large base64 image data in sessionStorage/localStorage easily exceeds
+      // browser quotas and causes QuotaExceededError. Captured photos are kept in-memory
+      // during the session and the final compiled image is persisted to IndexedDB
+      // via `lib/localDb.ts` when needed.
       const savedFilter = sessionStorage.getItem('booth_filter');
       const savedStickers = sessionStorage.getItem('booth_stickers');
 
@@ -44,12 +48,6 @@ export function BoothProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(savedFrame);
           setSelectedFrameState(parsed);
-        } catch (_) {}
-      }
-      if (savedPhotos) {
-        try {
-          const parsed = JSON.parse(savedPhotos);
-          setCapturedPhotosState(parsed);
         } catch (_) {}
       }
       if (savedFilter) {
@@ -73,9 +71,9 @@ export function BoothProvider({ children }: { children: React.ReactNode }) {
 
   const setCapturedPhotos = (photos: string[]) => {
     setCapturedPhotosState(photos);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('booth_photos', JSON.stringify(photos));
-    }
+    // IMPORTANT: do NOT persist raw base64 images to sessionStorage/localStorage.
+    // This prevents exceeding storage quotas on the browser. Use IndexedDB
+    // (`lib/localDb.ts`) for storing final compiled captures instead.
   };
 
   const setPhotoFilter = (filter: string) => {

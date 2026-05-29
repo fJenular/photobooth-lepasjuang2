@@ -41,7 +41,7 @@ export default function HomePage() {
   }, []);
 
   const handleStart = () => {
-    router.push('/select-frame');
+    router.push('/capture');
   };
 
   const handleSaveSettings = () => {
@@ -98,73 +98,65 @@ export default function HomePage() {
       </nav>
 
       {/* Main Hero Container */}
-      <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center text-center md:gap-6 lg:mt-1  -my-6 z-10">
+      <main className="w-full max-w-5xl flex-1 flex flex-col md:flex-row items-center md:items-stretch justify-center text-center md:text-left gap-2 lg:mt-1 -my-6 z-10">
         
-        {/* Logos & Branding */}
-        <div className="flex flex-col items-center max-w-md w-full gap-0 animate-fade-in animate-delay-100">
-
-          {/* Logo Lepas Juang */}
+        {/* Logo Column */}
+        <div className="w-full md:w-3/5 flex items-center justify-center md:justify-start animate-fade-in animate-delay-100">
           <img 
             src="/Graduation.svg" 
             alt="Graduation Logo" 
-            className="w-full h-auto block  animate-float animate-fade-in animate-delay-200"
-            style={{ maxWidth: '100%', height: 'auto' }}
-          />
+            className="w-[500px] max-w-full h-auto block animate-float animate-fade-in animate-delay-200" />
+        </div>
 
-          {/* Central Logo Box */}
-          <div className="bg-white border border-slate-200 shadow-md rounded-3xl p-5 md:p-8 w-full flex flex-col items-center gap-2 -mt-6 md:-mt-8 animate-fade-in animate-pop animate-delay-300">
-               <div className="bg-amber-400 text-black font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm uppercase tracking-widest rotate-[-1deg]">
+        {/* Content Column */}
+        <div className="w-full md:w-2/5 flex flex-col items-center md:items-start justify-center gap-5 animate-fade-in animate-delay-400 px-4 md:px-0">
+          <div className="bg-white border border-slate-200 shadow-md rounded-3xl p-4 md:p-6 w-full flex flex-col items-center md:items-start gap-1 animate-fade-in animate-pop animate-delay-300">
+            <div className="bg-amber-400 text-black font-extrabold text-xs px-3 py-1 rounded-full shadow-sm uppercase tracking-widest rotate-[-1deg]">
               2 June 2025
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-blue-600 tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-blue-600 tracking-tight leading-tight">
               Take Your Time
             </h1>
-            
-            <p className="text-slate-500 text-xs sm:text-sm font-semibold mt-2 leading-relaxed">
+            <p className="text-slate-500 text-xs sm:text-sm font-semibold mt-1 leading-relaxed">
               Selamat Datang di Photobooth Lepas Juang #2 SMK TI Bazma. Abadikan momen kelulusan secara online & offline!
             </p>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="w-full max-w-sm flex flex-col gap-3 mt-1 md:mt-2 px-4 animate-fade-in animate-delay-400">
           <button
             onClick={handleStart}
-            className="w-full py-3 sm:py-4 px-4 flex justify-center items-center gap-2 text-white font-bold text-base sm:text-lg btn-google-blue cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all duration-200 animate-fade-in animate-delay-400"
+            className="w-full py-2.5 sm:py-3 px-4 flex justify-center items-center gap-2 text-white font-bold text-sm sm:text-base btn-google-blue cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all duration-200 animate-fade-in animate-delay-400"
           >
             START PHOTO BOOTH
-            <ArrowRight className="w-5 h-5 flex-shrink-0" />
+            <ArrowRight className="w-4 h-4 flex-shrink-0" />
           </button>
 
-          <div className="grid grid-cols-2 gap-3 px-0">
+          <div className="grid grid-cols-2 gap-2 w-full">
             <button
               onClick={() => setShowGallery(true)}
-              className="py-3 sm:py-3.5 px-2 font-bold btn-google-white flex items-center justify-center gap-1.5 cursor-pointer text-xs hover:shadow-md active:scale-95 transition-all"
+              className="py-2 sm:py-2.5 px-2 font-bold btn-google-white flex items-center justify-center gap-1 cursor-pointer text-xs hover:shadow-md active:scale-95 transition-all"
             >
-              <Layers className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <Layers className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
               <span className="truncate">Galeri Foto</span>
             </button>
             <button
               onClick={() => setShowInfoModal('ABOUT')}
-              className="py-3 sm:py-3.5 px-2 font-bold btn-google-white flex items-center justify-center gap-1.5 cursor-pointer text-xs hover:shadow-md active:scale-95 transition-all"
+              className="py-2 sm:py-2.5 px-2 font-bold btn-google-white flex items-center justify-center gap-1 cursor-pointer text-xs hover:shadow-md active:scale-95 transition-all"
             >
-              <Info className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <Info className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
               <span className="truncate">Info Aplikasi</span>
             </button>
           </div>
-        </div>
 
-        {/* Mini links */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 text-xs font-bold text-slate-400 mb-8 animate-fade-in animate-delay-450">
-          <button onClick={() => setShowInfoModal('PRIVACY')} className="hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
-            Kebijakan Privasi
-          </button>
-          <span className="hidden sm:inline">•</span>
-          <button onClick={() => setShowInfoModal('CONTACT')} className="hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
-            Hubungi Kami
-          </button>
+          <div className="w-full flex flex-wrap justify-center items-center gap-2 md:gap-3 text-xs font-bold text-slate-400 animate-fade-in animate-delay-450">
+            <button onClick={() => setShowInfoModal('PRIVACY')} className="hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
+              Kebijakan Privasi
+            </button>
+            <span className="hidden sm:inline">•</span>
+            <button onClick={() => setShowInfoModal('CONTACT')} className="hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
+              Hubungi Kami
+            </button>
+          </div>
         </div>
-
       </main>
 
       {/* Footer */}
