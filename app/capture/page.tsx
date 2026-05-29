@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBooth } from '@/lib/boothContext';
-import { ArrowLeft, Camera, Video } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Camera, RefreshCw, Video } from 'lucide-react';
 
 export default function CapturePage() {
   const router = useRouter();
@@ -14,6 +14,8 @@ export default function CapturePage() {
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
   const [cameraActive, setCameraActive] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string>('');
+  const [isDetectingCamera, setIsDetectingCamera] = useState<boolean>(true);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [countdown, setCountdown] = useState<number>(0);
   const [isCounting, setIsCounting] = useState<boolean>(false);
@@ -36,6 +38,11 @@ export default function CapturePage() {
   // Required snaps count
   const requiredSnaps = 6;
   const capturedCount = capturedPhotos.filter(Boolean).length;
+  const isInsecureLanAccess = () => {
+    if (typeof window === 'undefined') return false;
+    const localhostHosts = ['localhost', '127.0.0.1', '[::1]', '::1'];
+    return !window.isSecureContext && !localhostHosts.includes(window.location.hostname);
+  };
 
   useEffect(() => {
     // Populate cameras list
@@ -56,7 +63,27 @@ export default function CapturePage() {
   }, []);
 
   const detectCameras = async () => {
+    setIsDetectingCamera(true);
+    setCameraError('');
+
     try {
+      if (isInsecureLanAccess()) {
+        setCameras([]);
+        setCameraError('Safari/iPad tidak mengizinkan kamera dari HTTP IP lokal. Buka dari HTTPS tunnel/domain, atau akses langsung dari perangkat host lewat localhost.');
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameras([]);
+        setCameraError('Akses kamera tidak tersedia di browser ini. Jika memakai iPad via IP LAN, gunakan HTTPS karena Safari memblokir kamera di HTTP.');
+        return;
+      }
+
+      if (!navigator.mediaDevices.enumerateDevices) {
+        await startCamera('', cameraFacing);
+        return;
+      }
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       setCameras(videoDevices);
@@ -64,16 +91,33 @@ export default function CapturePage() {
         const firstCam = videoDevices[0].deviceId;
         setSelectedCameraId(firstCam);
         startCamera(firstCam);
+      } else {
+        setCameraError('Kamera tidak terdeteksi. Pastikan webcam tersambung, tidak dipakai aplikasi lain, lalu coba lagi.');
       }
     } catch (err) {
       console.error('Gagal mendeteksi kamera:', err);
+      setCameras([]);
+      setCameraError('Gagal mendeteksi kamera. Periksa izin kamera di browser dan pastikan halaman dibuka lewat HTTPS atau localhost.');
+    } finally {
+      setIsDetectingCamera(false);
     }
   };
 
   const startCamera = async (camId: string = '', facing: 'user' | 'environment' = cameraFacing) => {
     stopCamera();
+    setCameraError('');
+
     try {
-      setCameraActive(true);
+      if (isInsecureLanAccess()) {
+        setCameraError('Safari/iPad tidak mengizinkan kamera dari HTTP IP lokal. Gunakan HTTPS tunnel/domain seperti ngrok/Cloudflare Tunnel, bukan http://192.168.x.x.');
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Akses kamera tidak tersedia di browser ini. Jika memakai iPad via IP LAN, gunakan HTTPS karena Safari memblokir kamera di HTTP.');
+        return;
+      }
+
       const constraints = {
         video: camId ? { deviceId: { exact: camId } } : { facingMode: facing },
         audio: false
@@ -83,11 +127,32 @@ export default function CapturePage() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
+      setCameraActive(true);
     } catch (err) {
       console.error('Error starting video stream:', err);
-      alert('Gagal mengakses kamera. Silakan periksa izin kamera peramban Anda.');
+      let message = 'Gagal mengakses kamera. Silakan periksa izin kamera peramban Anda.';
+
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          message = 'Izin kamera ditolak. Klik ikon kamera/gembok di address bar lalu izinkan akses kamera.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          message = 'Kamera tidak ditemukan. Sambungkan webcam atau gunakan perangkat yang memiliki kamera.';
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          message = 'Kamera sedang dipakai aplikasi lain. Tutup Zoom/Meet/aplikasi kamera lain, lalu coba lagi.';
+        } else if (err.name === 'OverconstrainedError') {
+          message = 'Kamera yang dipilih tidak tersedia. Coba pilih kamera lain atau gunakan tombol coba lagi.';
+        } else if (err.name === 'SecurityError') {
+          message = 'Akses kamera diblokir. Buka halaman melalui HTTPS atau localhost.';
+        }
+      }
+
+      setCameraError(message);
       setCameraActive(false);
     }
+  };
+
+  const handleRetryCamera = () => {
+    detectCameras();
   };
 
   const stopCamera = () => {
@@ -181,7 +246,7 @@ export default function CapturePage() {
     setIsCounting(true);
     isCountingRef.current = true;
 
-    let count = 3;
+    let count = 1;
     setCountdown(count);
     playSound('beep');
 
@@ -323,8 +388,32 @@ export default function CapturePage() {
 
             {!cameraActive && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-4">
-                <Video className="w-10 h-10 text-slate-400 animate-pulse" />
-                <p className="text-slate-300 font-bold text-xs">Menghubungkan ke Stream Kamera...</p>
+                {cameraError ? (
+                  <div className="max-w-md rounded-3xl border border-rose-400/30 bg-rose-950/80 p-5 shadow-2xl backdrop-blur-sm">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-300">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-base font-black text-white">Kamera tidak tersedia</h3>
+                    <p className="mt-2 text-xs font-semibold leading-6 text-rose-100">
+                      {cameraError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRetryCamera}
+                      className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-extrabold text-slate-900 shadow-sm transition hover:bg-rose-50 active:scale-95"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Coba Deteksi Lagi
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Video className="w-10 h-10 text-slate-400 animate-pulse" />
+                    <p className="text-slate-300 font-bold text-xs">
+                      {isDetectingCamera ? 'Mendeteksi kamera...' : 'Menghubungkan ke Stream Kamera...'}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
