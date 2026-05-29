@@ -55,9 +55,9 @@ export default function ResultPage() {
         </div>
       </header>
 
-      <main className="z-10 grid w-full max-w-6xl flex-1 items-center gap-4 py-4 md:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.72fr)] md:gap-6 md:py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="order-1 flex min-h-0 items-center justify-center">
-          <div className="w-full max-w-[min(92vw,430px)] md:max-w-[min(52vw,560px)]">
+      <main className="z-10 grid w-full max-w-6xl flex-1 items-start gap-4 py-4 md:grid-cols-[minmax(0,1fr)_300px] md:gap-5 md:py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="order-1 flex min-h-0 items-center justify-center md:sticky md:top-5">
+          <div className="w-full max-w-[min(92vw,430px)] md:max-w-[min(58vw,620px)]">
             <div className="relative rounded-[2rem] border border-white bg-white p-2 shadow-[0_24px_70px_rgba(15,23,42,0.18)] md:rounded-[2.75rem] md:p-3">
               <div className="pointer-events-none absolute -left-3 top-10 hidden h-20 w-20 rounded-3xl bg-blue-500/10 blur-2xl md:block" />
               <div className="pointer-events-none absolute -right-4 bottom-8 hidden h-24 w-24 rounded-full bg-amber-400/20 blur-2xl md:block" />
@@ -99,7 +99,7 @@ export default function ResultPage() {
           </div>
         </section>
 
-        <section className="order-2 w-full rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:sticky md:top-5 md:rounded-[2.5rem] md:p-5 lg:p-6">
+        <section className="order-2 w-full rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:sticky md:top-5 md:rounded-[2.5rem] md:p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-green-600 ring-1 ring-green-100">
               <CheckCircle2 className="h-5 w-5" />

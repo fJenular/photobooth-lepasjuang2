@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useBooth } from '@/lib/boothContext';
 import { AlertCircle, ArrowLeft, Camera, RefreshCw, Video } from 'lucide-react';
 
+type WebkitAudioWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+
 export default function CapturePage() {
   const router = useRouter();
   const { capturedPhotos, setCapturedPhotos } = useBooth();
@@ -20,7 +25,7 @@ export default function CapturePage() {
   const [countdown, setCountdown] = useState<number>(0);
   const [isCounting, setIsCounting] = useState<boolean>(false);
   const [isFlash, setIsFlash] = useState<boolean>(false);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundEnabled] = useState<boolean>(true);
   const [mirrorEnabled, setMirrorEnabled] = useState<boolean>(true);
   const [flashEnabled, setFlashEnabled] = useState<boolean>(true);
   const [liveMode, setLiveMode] = useState<boolean>(true);
@@ -44,25 +49,7 @@ export default function CapturePage() {
     return !window.isSecureContext && !localhostHosts.includes(window.location.hostname);
   };
 
-  useEffect(() => {
-    // Populate cameras list
-    detectCameras();
-
-    // Reset local capture arrays
-    setCapturedPhotos([]);
-    photosRef.current = [];
-    activeIndexRef.current = 0;
-    setActivePhotoIndex(0);
-
-    // Mark mounted after first render to avoid SSR/client hydration mismatches
-    setMounted(true);
-
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
-  const detectCameras = async () => {
+  async function detectCameras() {
     setIsDetectingCamera(true);
     setCameraError('');
 
@@ -101,9 +88,9 @@ export default function CapturePage() {
     } finally {
       setIsDetectingCamera(false);
     }
-  };
+  }
 
-  const startCamera = async (camId: string = '', facing: 'user' | 'environment' = cameraFacing) => {
+  async function startCamera(camId: string = '', facing: 'user' | 'environment' = cameraFacing) {
     stopCamera();
     setCameraError('');
 
@@ -149,19 +136,40 @@ export default function CapturePage() {
       setCameraError(message);
       setCameraActive(false);
     }
-  };
+  }
 
   const handleRetryCamera = () => {
     detectCameras();
   };
 
-  const stopCamera = () => {
+  function stopCamera() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     setCameraActive(false);
-  };
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      detectCameras();
+      setCapturedPhotos([]);
+      photosRef.current = [];
+      activeIndexRef.current = 0;
+      setMounted(true);
+    });
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+    // Runs once on mount to initialize camera and reset transient capture state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFlipCamera = () => {
     const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
@@ -174,7 +182,10 @@ export default function CapturePage() {
   const playSound = (type: 'beep' | 'camera_shutter' | 'cheer') => {
     if (!soundEnabled) return;
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextCtor = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
+      if (!AudioContextCtor) return;
+
+      const ctx = new AudioContextCtor();
       if (type === 'beep') {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -220,7 +231,7 @@ export default function CapturePage() {
           osc.stop(ctx.currentTime + i * 0.08 + 0.18);
         });
       }
-    } catch (_) {}
+    } catch {}
   };
 
   const handleCaptureSequence = () => {
@@ -246,7 +257,7 @@ export default function CapturePage() {
     setIsCounting(true);
     isCountingRef.current = true;
 
-    let count = 1;
+    let count = 3;
     setCountdown(count);
     playSound('beep');
 
@@ -326,10 +337,10 @@ export default function CapturePage() {
   };
 
   return (
-    <div className="min-h-screen bg-game-pattern flex flex-col justify-between items-center p-4 md:p-6 select-none">
+    <div className="min-h-screen bg-game-pattern flex flex-col items-center px-4 py-4 md:px-6 md:py-5 select-none">
       
       {/* Header */}
-      <header className="w-full max-w-5xl flex items-center justify-between bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3.5 mb-2 z-10">
+      <header className="w-full max-w-6xl flex items-center justify-between bg-white/95 border border-slate-200/80 shadow-sm rounded-2xl px-4 py-3 md:px-5 md:py-3.5 z-10 backdrop-blur">
         <button 
           onClick={handleBack}
           className="p-2 hover:bg-slate-100 border border-slate-200 rounded-xl cursor-pointer text-slate-600 transition-colors"
@@ -349,8 +360,8 @@ export default function CapturePage() {
       </header>
 
       {/* Main Panel */}
-      <main className="w-full max-w-5xl flex-1 grid grid-cols-1 lg:grid-cols-[2.4fr_1fr] gap-4 md:gap-6 my-4 z-10">
-        <section className="order-2 lg:order-1 flex flex-col gap-4">
+      <main className="w-full max-w-6xl flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_340px] gap-4 md:gap-5 py-4 md:py-5 z-10 items-start">
+        <section className="order-1 flex flex-col gap-3 md:gap-4 min-w-0">
           <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
             <div className="flex items-center justify-between gap-4 mb-3">
               <div>
@@ -368,7 +379,7 @@ export default function CapturePage() {
             </div>
           </div>
 
-          <div className="relative bg-slate-950 border border-slate-200 shadow-md rounded-3xl aspect-[4/3] overflow-hidden">
+          <div className="relative bg-slate-950 border border-slate-200 shadow-md rounded-3xl aspect-[4/3] md:aspect-[16/10] overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_30%)]" />
               <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.04),rgba(255,255,255,0.04)_1px,transparent_1px,transparent_3px)] opacity-30" />
@@ -429,34 +440,34 @@ export default function CapturePage() {
               </div>
             )}
 
-            <div className="absolute inset-x-0 top-4 px-4 flex flex-wrap items-center justify-between gap-2 z-20">
+            <div className="absolute inset-x-0 top-3 px-3 md:top-4 md:px-4 flex flex-wrap items-center justify-between gap-2 z-20">
               <div className="bg-red-600 text-white rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2 shadow-lg">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
                 REC
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex max-w-[calc(100%-4.5rem)] flex-wrap justify-end items-center gap-1.5 md:gap-2">
                 <button
                   type="button"
                   onClick={() => setMirrorEnabled(prev => !prev)}
-                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${mirrorEnabled ? 'bg-cyan-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
+                  className={`rounded-full px-2.5 py-2 text-[9px] md:px-3 md:text-[10px] font-bold uppercase tracking-[0.16em] md:tracking-[0.2em] transition ${mirrorEnabled ? 'bg-cyan-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
                   Mirror
                 </button>
                 <button
                   type="button"
                   onClick={handleFlipCamera}
-                  className="rounded-full px-3 py-2 bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-[0.2em] transition">
+                  className="rounded-full px-2.5 py-2 md:px-3 bg-slate-100 text-slate-700 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.16em] md:tracking-[0.2em] transition">
                   Flip
                 </button>
                 <button
                   type="button"
                   onClick={() => setFlashEnabled(prev => !prev)}
-                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${flashEnabled ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
+                  className={`rounded-full px-2.5 py-2 md:px-3 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.16em] md:tracking-[0.2em] transition ${flashEnabled ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-700'}`}>
                   Flash
                 </button>
                 <button
                   type="button"
                   onClick={() => setLiveMode(prev => !prev)}
-                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition ${liveMode ? 'bg-slate-100 text-slate-700' : 'bg-slate-800 text-white'}`}>
+                  className={`rounded-full px-2.5 py-2 md:px-3 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.16em] md:tracking-[0.2em] transition ${liveMode ? 'bg-slate-100 text-slate-700' : 'bg-slate-800 text-white'}`}>
                   Live
                 </button>
               </div>
@@ -497,9 +508,14 @@ export default function CapturePage() {
           </div>
         </section>
 
-        <aside className="order-1 lg:order-2 flex flex-col gap-4 bg-white border border-slate-200 shadow-sm rounded-3xl p-4 md:p-5">
-          <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">Frame Preview</div>
-          <div className="border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+        <aside className="order-2 md:sticky md:top-5 flex flex-col gap-3 md:gap-4 bg-white/95 border border-slate-200 shadow-sm rounded-3xl p-4 md:p-5 backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400">Frame Preview</div>
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-blue-600">
+              6 Shots
+            </span>
+          </div>
+          <div className="mx-auto w-full max-w-[180px] md:max-w-[220px] border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
             <img
               src="/frame.png"
               alt="Frame Preview"
@@ -507,7 +523,7 @@ export default function CapturePage() {
             />
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-3 md:p-4">
             <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-slate-400 mb-3">Snap Photo Queue</p>
             <div className="grid grid-cols-3 gap-2">
               {Array.from({ length: requiredSnaps }).map((_, idx) => (
@@ -522,7 +538,7 @@ export default function CapturePage() {
             </div>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-2.5 md:gap-3">
             <button
               onClick={handleCaptureSequence}
               disabled={isCounting || !cameraActive}
@@ -555,7 +571,7 @@ export default function CapturePage() {
       <canvas ref={canvasRef} className="hidden"></canvas>
 
       {/* Footer */}
-      <footer className="text-center text-slate-400 text-xs font-semibold z-10">
+      <footer className="pb-2 text-center text-slate-400 text-xs font-semibold z-10">
         <p>© 2026 TAKE YOUR TIME BOOTH. ALL RIGHTS RESERVED.</p>
       </footer>
 

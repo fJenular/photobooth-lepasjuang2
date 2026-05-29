@@ -84,9 +84,45 @@ export default function DownloadPage() {
   const handleDownload = async () => {
     if (!photoUrl) return;
 
-    try {
-      // For local blobs/base64, trigger direct download
-      if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
+    // 1. Try Mobile Web Share API first (Highly recommended for iOS Safari, Chrome Android, and in-app browsers)
+    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(photoUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `take-your-time-${id.substring(0, 8)}.png`, { type: 'image/png' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Take Your Time Photobooth',
+            text: 'Unduh hasil foto dari Take Your Time Photobooth!',
+          });
+          return;
+        }
+      } catch (shareError) {
+        console.warn('Web Share failed or was cancelled, trying other methods:', shareError);
+      }
+    }
+
+    // 2. If it is a Supabase URL, use server-side ?download parameter to bypass CORS & in-app browser limitations
+    if (photoUrl.includes('supabase.co/storage/v1/object/public')) {
+      try {
+        const downloadUrl = `${photoUrl}?download=take-your-time-${id.substring(0, 8)}.png`;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `take-your-time-${id.substring(0, 8)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      } catch (err) {
+        console.error('Supabase direct download failed:', err);
+      }
+    }
+
+    // 3. For local blobs/base64, trigger direct download
+    if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
+      try {
         const link = document.createElement('a');
         link.href = photoUrl;
         link.download = `take-your-time-${id.substring(0, 8)}.png`;
@@ -94,9 +130,13 @@ export default function DownloadPage() {
         link.click();
         document.body.removeChild(link);
         return;
+      } catch (err) {
+        console.error('Local blob download failed:', err);
       }
+    }
 
-      // For external URLs, we fetch as blob to bypass CORS download issues
+    // 4. Default fallback: fetch as blob and download (standard desktop method)
+    try {
       const response = await fetch(photoUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
@@ -108,11 +148,11 @@ export default function DownloadPage() {
       link.click();
       document.body.removeChild(link);
       
-      // Cleanup
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      // Fallback: open in new tab
-      window.open(photoUrl, '_blank');
+      console.error('All download methods failed, navigating to image:', error);
+      // Final resilient fallback: navigate directly to image (never blocked by popup blockers)
+      window.location.href = photoUrl;
     }
   };
 
@@ -204,6 +244,10 @@ export default function DownloadPage() {
                 <Download className="w-6 h-6 stroke-[3]" />
                 SIMPAN FOTO (PNG)
               </button>
+
+              <p className="text-[11px] text-slate-400 text-center font-medium px-2 leading-relaxed">
+                💡 <strong>Tips HP:</strong> Jika tombol tidak merespon (terutama di dalam browser Instagram/WhatsApp), silakan <strong>tekan lama gambar di atas</strong> lalu pilih <strong>"Simpan Gambar"</strong>.
+              </p>
 
               <div className="grid grid-cols-2 gap-3">
                 <button

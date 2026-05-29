@@ -200,8 +200,28 @@ export default function SharePage() {
     printWindow.document.close();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!finalImage) return;
+
+    // Mobile Web Share API support (Highly recommended for tablets and mobile devices)
+    if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+      try {
+        const response = await fetch(finalImage);
+        const blob = await response.blob();
+        const file = new File([blob], `lepas-juang-${shareId.substring(0, 8)}.png`, { type: 'image/png' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Lepas Juang Photobooth',
+            text: 'Unduh hasil foto dari Lepas Juang Photobooth!',
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Web Share failed, trying direct download fallback:', err);
+      }
+    }
 
     const link = document.createElement('a');
     link.href = finalImage;
@@ -229,8 +249,8 @@ export default function SharePage() {
   };
 
   return (
-    <div className="min-h-screen bg-game-pattern flex flex-col justify-between items-center p-4 md:p-6 select-none">
-      <header className="w-full max-w-5xl flex items-center justify-between bg-white border border-slate-200/80 shadow-sm rounded-2xl px-5 py-3.5 mb-2 z-10">
+    <div className="min-h-screen bg-game-pattern flex flex-col items-center px-4 py-4 md:px-6 md:py-5 select-none">
+      <header className="w-full max-w-6xl flex items-center justify-between bg-white/95 border border-slate-200/80 shadow-sm rounded-2xl px-4 py-3 md:px-5 md:py-3.5 z-10 backdrop-blur">
         <button
           onClick={() => router.push('/result')}
           className="p-2 hover:bg-slate-100 border border-slate-200 rounded-xl cursor-pointer text-slate-600 transition-colors"
@@ -248,14 +268,14 @@ export default function SharePage() {
         <div className="w-9" />
       </header>
 
-      <main className="w-full max-w-5xl flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 my-4 z-10 items-start md:items-center">
-        <div className="lg:col-span-6 flex flex-col items-center order-2 lg:order-1">
+      <main className="w-full max-w-6xl flex-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_380px] gap-4 md:gap-5 py-4 md:py-5 z-10 items-start">
+        <div className="order-1 flex flex-col items-center md:sticky md:top-5">
           <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-3">
             Hasil Akhir Photobooth Anda
           </span>
 
           {finalImage ? (
-            <div className="bg-white border border-slate-200/80 shadow-md rounded-2xl p-3 md:p-4 overflow-hidden max-w-[230px] mx-auto relative">
+            <div className="bg-white border border-slate-200/80 shadow-md rounded-[2rem] p-3 md:p-4 overflow-hidden w-full max-w-[min(82vw,300px)] md:max-w-[min(48vw,380px)] mx-auto relative">
               <img
                 src={finalImage}
                 alt="Final compiled frame"
@@ -269,8 +289,16 @@ export default function SharePage() {
           )}
         </div>
 
-        <div className="lg:col-span-6 flex flex-col gap-4 md:gap-5 order-1 lg:order-2">
-          <div className="flex flex-col gap-2.5">
+        <div className="order-2 flex flex-col gap-4 md:gap-5">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:rounded-[2.5rem] md:p-5">
+            <div className="mb-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-green-600">Final Output</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-900 md:text-2xl">Siap cetak & bagikan</h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                Download PNG, cetak, atau pindai QR untuk ambil hasil dari HP.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5">
             <button
               onClick={handleDownload}
               disabled={!finalImage}
@@ -288,9 +316,10 @@ export default function SharePage() {
               <Printer className="w-4 h-4" />
               CETAK / PRINT FOTO
             </button>
+            </div>
           </div>
 
-          <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-4 flex flex-col items-center gap-4">
+          <div className="bg-white/95 border border-slate-200 shadow-sm rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-5 flex flex-col items-center gap-4 backdrop-blur">
             <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2 w-full justify-center">
               <QrCode className="w-4 h-4 text-blue-600" />
               <span className="text-[11px] font-extrabold uppercase text-blue-600 tracking-wide">
@@ -299,17 +328,17 @@ export default function SharePage() {
             </div>
 
             {shareId ? (
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
+              <div className="flex flex-col items-center gap-4 w-full justify-center">
                 <div className="p-2.5 bg-white border border-slate-200 rounded-2xl shadow-inner">
                   <QRCodeSVG value={getDownloadUrl()} size={110} level="H" />
                 </div>
 
-                <div className="flex-1 text-left flex flex-col gap-1.5">
+                <div className="w-full text-left flex flex-col gap-1.5">
                   <p className="text-[11px] text-slate-500 leading-normal font-semibold">
                     Arahkan kamera ponsel ke QR Code untuk mengunduh hasil frame final.
                   </p>
 
-                  <div className="bg-slate-50 border border-slate-250 rounded px-2.5 py-1.5 break-all max-w-[210px]">
+                  <div className="bg-slate-50 border border-slate-250 rounded-xl px-2.5 py-1.5 break-all w-full">
                     <span className="text-[9px] text-slate-450 font-mono select-all">
                       {getDownloadUrl()}
                     </span>
@@ -352,7 +381,7 @@ export default function SharePage() {
             )}
           </div>
 
-          <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur flex flex-col gap-2">
             <button
               onClick={handleRestart}
               className="w-full py-3 flex justify-center items-center gap-2 text-white font-bold text-xs btn-google-red cursor-pointer rounded-full hover:shadow-lg active:scale-95 transition-all"
@@ -376,7 +405,7 @@ export default function SharePage() {
 
       <canvas ref={compiledCanvasRef} className="hidden" />
 
-      <footer className="text-center text-slate-400 text-xs font-semibold z-10">
+      <footer className="pb-2 text-center text-slate-400 text-xs font-semibold z-10">
         <p>© 2026 TAKE YOUR TIME BOOTH. ALL RIGHTS RESERVED.</p>
       </footer>
     </div>
