@@ -234,11 +234,26 @@ export default function SharePage() {
   const getDownloadUrl = () => {
     if (typeof window === 'undefined') return '';
 
+    // Check if the current hostname is a local offline address
+    const hostname = window.location.hostname;
+    const isLocalNetwork = hostname === 'localhost' || 
+                           hostname === '127.0.0.1' || 
+                           hostname.startsWith('192.168.') || 
+                           hostname.startsWith('10.') || 
+                           hostname.startsWith('172.');
+
+    // If hosted online (on Vercel or any public domain), always use the website's live URL origin
+    if (!isLocalNetwork || hostname.includes('vercel.app')) {
+      return `${window.location.origin}/download/${shareId}`;
+    }
+
+    // If Supabase is configured even in local testing, we can also use the origin
     const config = getSupabaseConfig();
     if (config.url && config.anonKey) {
       return `${window.location.origin}/download/${shareId}`;
     }
 
+    // Offline Local Mode: Use the local IP so other devices in the same Wi-Fi can connect
     const port = window.location.port ? `:${window.location.port}` : '';
     return `http://${localIp}${port}/download/${shareId}`;
   };
